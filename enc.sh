@@ -4,8 +4,9 @@
 
 usage () {
     echo "USAGE"
-    echo "  enc [format] [sample] [filename]"
+    echo "  enc [-n] [format] [sample] [filename]"
     echo ""
+    echo "    -n:       eliminate tracknumber from target filename"
     echo "    format:   encode format (mp3 only)"
     echo "    sample:   sampling rate (default 192)"
     echo "    filename: [audio_nn.inf, audio.cddb, or audio.cdindex]"
@@ -15,11 +16,13 @@ usage () {
     echo "     $ enc"
     echo "     $ enc mp3"
     echo "     $ enc mp3 192 audio_01.inf"
+    echo "     $ enc -n mp3 192 audio.cdindex"
     exit 0
 }
 
 FMT="mp3"
 SMP="192"
+NON=false
 
 for opt in "$@"
 do
@@ -39,6 +42,9 @@ do
 	audio.cdindex)
 	    INF=$opt
 	;;
+	-n)
+	    NON=true
+	;;
 	*)
 	    usage
     esac
@@ -46,6 +52,7 @@ done
 
 
 if [ -z "$INF" ]; then
+    NON=true
     SOURCES=`ls *.wav`
     TARGETS=`ls *.wav | sed 's/\.wav/\.mp3/g'`
 elif [ "audio.cddb" = "$INF" ]; then
@@ -68,10 +75,28 @@ IFS=$'\n'
 targs=( $TARGETS )
 ix=0
 
+#
+# $1 index for targs array
+# $2 eliminate track number, if it's true
+#
+function trgname
+{
+    index=$1
+    nonum=$2
+    trg=`echo ${targs[$index]} | sed 's/^[[:blank:]]*//'`
+
+    if [ true == $nonum ]; then
+	echo $trg
+    else
+	echo `printf "%02d - %s" $((index + 1)) $trg`
+    fi
+}
+
 
 # confirm
 for src in $SOURCES; do
-    echo -e $src "\t->\t" ${targs[$ix]}
+    trg=`trgname $ix $NON`
+    echo -e $src "\t->\t" $trg
     ix=$((ix + 1))
 done
 
@@ -89,7 +114,7 @@ fi
 ix=0
 
 for src in $SOURCES; do
-    trg=${targs[$ix]}
+    trg=`trgname $ix $NON`
     ix=$((ix + 1))
 
     if [ -e "$trg" ]; then
